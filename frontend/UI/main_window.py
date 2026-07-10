@@ -6,6 +6,9 @@ from UI.widgets.taches_table import TachesTable
 
 
 class MainWindow(tk.Tk):
+    STATUTS_AFFICHAGE = {"a_faire": "À faire", "en_cours": "En cours", "termine": "Terminé"}
+    STATUTS_REVERSE = {v: k for k, v in STATUTS_AFFICHAGE.items()}
+
     def __init__(self, api_client, retour_connexion=None):
         super().__init__()
         self.api_client = api_client
@@ -104,14 +107,18 @@ class MainWindow(tk.Tk):
             utilisateurs = self.api_client.obtenir_utilisateurs() or []
             mappage_users = {u.get("id_utilisateur"): u.get("nom_utilisateur") for u in utilisateurs}
 
+            categories = self.api_client.obtenir_categories() or []
+            mappage_categories = {c.get("id_categories"): c.get("nom_categorie") for c in categories if c.get("id_categories")}
+
             for tache in self.taches_initiales:
                 id_assigne = tache.get("assigned_to")
                 tache["assigned_to"] = mappage_users.get(id_assigne, "Non assigné") if id_assigne else "Non assigné"
+                tache["categorie"] = mappage_categories.get(tache.get("categorie_id"), "Aucune")
+                tache["statut_affichage"] = self.STATUTS_AFFICHAGE.get(str(tache.get("statut", "")).lower(), tache.get("statut", ""))
 
             self.tableau.rafraichir(self.taches_initiales)
             self.mettre_a_jour_statistiques(self.taches_initiales)
 
-            categories = self.api_client.obtenir_categories() or []
             liste_cat = ["Toutes"] + [c.get("nom_categorie") for c in categories if c.get("nom_categorie")]
             self.combo_cat["values"] = list(set(liste_cat))
             self.combo_cat.set("Toutes")
@@ -141,7 +148,8 @@ class MainWindow(tk.Tk):
             
             match_cat = (categorie == "Toutes" or str(t.get("categorie", "")) == categorie)
             match_prio = (priorite == "Toutes" or str(t.get("priority", "")).capitalize() == priorite.capitalize())
-            match_statut = (statut == "Tous" or str(t.get("statut", "")).lower() == statut.lower())
+            statut_tache = self.STATUTS_AFFICHAGE.get(str(t.get("statut", "")).lower(), str(t.get("statut", "")))
+            match_statut = (statut == "Tous" or statut_tache.lower() == statut.lower())
 
             if match_texte and match_cat and match_prio and match_statut:
                 resultats.append(t)
@@ -255,7 +263,7 @@ class MainWindow(tk.Tk):
 
         tk.Label(fenetre, text="Statut").pack(pady=(10,0))
         combo_s = ttk.Combobox(fenetre, values=["À faire", "En cours", "Terminé"], width=32, state="readonly")
-        combo_s.set(tache_actuelle.get("statut", "À faire"))
+        combo_s.set(self.STATUTS_AFFICHAGE.get(str(tache_actuelle.get("statut", "")).lower(), "À faire"))
         combo_s.pack()
 
         tk.Label(fenetre, text="Priorité").pack(pady=(10,0))
@@ -277,7 +285,7 @@ class MainWindow(tk.Tk):
             champs = {
                 "titre": titre,
                 "description": texte_desc.get("1.0", tk.END).strip(),
-                "statut": combo_s.get(),
+                "statut": self.STATUTS_REVERSE.get(combo_s.get(), combo_s.get()),
                 "priority": combo_p.get().lower(),
                 "due_date": entree_date.get().strip() or None
             }

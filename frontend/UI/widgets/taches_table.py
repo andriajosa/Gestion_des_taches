@@ -60,14 +60,15 @@ class TachesTable(ttk.Frame):
         """Remplit le tableau avec les données de l'API et applique les styles de priorité."""
         self.tree.delete(*self.tree.get_children())
         for tache in taches:
-            priorite = tache.get("priority", "Basse")
+            priorite = str(tache.get("priority", "Basse")).capitalize()
+            statut = tache.get("statut_affichage") or tache.get("statut", "À faire")
             
             # Insertion avec le tag correspondant pour la couleur de ligne
             self.tree.insert("", tk.END, values=(
                 tache.get("id_tache"), 
                 tache.get("titre"), 
                 priorite,
-                tache.get("statut", "À faire"), 
+                statut, 
                 tache.get("due_date") or "Aucune", 
                 tache.get("assigned_to") or "Non assigné"
             ), tags=(priorite,))
